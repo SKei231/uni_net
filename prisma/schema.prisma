@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 駅データ.js
+model company {
+  company_cd      Int @id @default(autoincrement())
+  rr_cd           Int
+  company_name    String @db.VarChar(255)
+  company_name_k  String? @db.VarChar(255)
+  company_name_h  String? @db.VarChar(255)
+  company_name_r  String? @db.VarChar(255)
+  company_url     String? @db.VarChar(255)
+  company_type    Int?
+  e_status        Int?
+  e_sort          Int?
+}
+
+model line {
+  line_cd       Int @id @unique @default(autoincrement())
+  company_cd    Int
+  line_name     String @db.VarChar(255)
+  line_name_k   String? @db.VarChar(255)
+  line_name_h   String? @db.VarChar(255)
+  line_color_c  String? @db.VarChar(255)
+  line_color_t  String? @db.VarChar(255)
+  line_type     Int?
+  lon           Float?
+  lat           Float?
+  zoom          Int?
+  e_status      Int?
+  e_sort        Int?
+}
+
+model station {
+  station_cd      Int @unique @default(autoincrement())
+  station_g_cd    Int
+  station_name    String @db.VarChar(255)
+  station_name_k  String? @db.VarChar(255)
+  station_name_r  String? @db.VarChar(255)
+  line_cd         Int
+  pref_cd         Int?
+  post            String? @db.VarChar(255)
+  address             String? @db.VarChar(255)
+  lon             Float?
+  lat             Float?
+  open_ymd        DateTime?
+  close_ymd       DateTime?
+  e_status        Int?
+  e_sort          Int?
+}
+
+model linedStation {
+  line_cd     Int @id
+  station_cd1 Int
+  station_cd2 Int
+}

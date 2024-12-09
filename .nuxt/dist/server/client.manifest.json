@@ -1,0 +1,18 @@
+{
+  "@vite/client": {
+    "prefetch": true,
+    "isEntry": true,
+    "file": "@vite/client",
+    "css": [],
+    "module": true,
+    "resourceType": "script"
+  },
+  "C:/Users/HS-Desctop/iCloudDrive/Desktop/uni/2024/ソーシャルネット論/uniNet/uninet-2/node_modules/nuxt/dist/app/entry.js": {
+    "resourceType": "script",
+    "module": true,
+    "prefetch": true,
+    "preload": true,
+    "isEntry": true,
+    "file": "C:/Users/HS-Desctop/iCloudDrive/Desktop/uni/2024/ソーシャルネット論/uniNet/uninet-2/node_modules/nuxt/dist/app/entry.js"
+  }
+}
