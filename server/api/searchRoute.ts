@@ -1,4 +1,4 @@
-// station_g_cd を基にグループされている駅の一覧を返す
+// start, end の駅グループコードを受け取り、2点間の経路を探索する
 
 import { PrismaClient } from '@prisma/client';
 
