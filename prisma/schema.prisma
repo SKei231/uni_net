@@ -35,6 +35,8 @@ model line {
   zoom          Int?
   e_status      Int?
   e_sort        Int?
+
+  station       station[]
 }
 
 model station {
@@ -53,6 +55,8 @@ model station {
   close_ymd       DateTime?
   e_status        Int?
   e_sort          Int?
+
+  line            line @relation(fields: [line_cd], references: [line_cd])
 }
 
 model linedStation {

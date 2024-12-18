@@ -181,7 +181,7 @@ const _uvAzyYLA9E = (function(nitro) {
 
 const rootDir = "C:/Users/HS-Desctop/iCloudDrive/Desktop/uni/2024/ソーシャルネット論/uniNet/uninet-2";
 
-const appHead = {"meta":[{"name":"viewport","content":"width=device-width, initial-scale=1"},{"charset":"utf-8"}],"link":[],"style":[],"script":[],"noscript":[]};
+const appHead = {"meta":[{"name":"viewport","content":"width=100vw, initial-scale=1"},{"charset":"utf-8"}],"link":[],"style":[],"script":[],"noscript":[],"bodyAttrs":{"class":"uninet-body"},"charset":"utf-8","viewport":"width=100vw, initial-scale=1","title":"経路探索"};
 
 const appRootTag = "div";
 
@@ -272,15 +272,15 @@ const plugins = [
 _Y2kfxSWFHv
 ];
 
-const _lazy_6QFWaD = () => Promise.resolve().then(function () { return company$1; });
+const _lazy_IENTA5 = () => Promise.resolve().then(function () { return searchRoute$2; });
 const _lazy_lsDLuv = () => Promise.resolve().then(function () { return searchStation$1; });
-const _lazy_bl6F9L = () => Promise.resolve().then(function () { return station$1; });
+const _lazy_svjjwg = () => Promise.resolve().then(function () { return stationList$1; });
 const _lazy_pAn1oq = () => Promise.resolve().then(function () { return renderer$1; });
 
 const handlers = [
-  { route: '/api/company', handler: _lazy_6QFWaD, lazy: true, middleware: false, method: undefined },
+  { route: '/api/searchRoute', handler: _lazy_IENTA5, lazy: true, middleware: false, method: undefined },
   { route: '/api/searchStation', handler: _lazy_lsDLuv, lazy: true, middleware: false, method: undefined },
-  { route: '/api/station', handler: _lazy_bl6F9L, lazy: true, middleware: false, method: undefined },
+  { route: '/api/stationList', handler: _lazy_svjjwg, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_error', handler: _lazy_pAn1oq, lazy: true, middleware: false, method: undefined },
   { route: '/**', handler: _lazy_pAn1oq, lazy: true, middleware: false, method: undefined }
 ];
@@ -1092,45 +1092,272 @@ const errorDev = /*#__PURE__*/Object.freeze({
 });
 
 const prisma$2 = new PrismaClient();
-const company = defineEventHandler(async (e) => {
+const allStation = [];
+const initAllStation = async () => {
+  allStation.length = 0;
+  const stationList = await prisma$2.station.findMany({
+    select: {
+      station_cd: true,
+      station_g_cd: true,
+      station_name: true,
+      line_cd: true,
+      lon: true,
+      lat: true
+    }
+  });
+  stationList.forEach(async (station) => {
+    let pushed = false;
+    for (let i = 0; i < allStation.length; i++) {
+      if (allStation[i].g_cd == station.station_g_cd) {
+        pushed = true;
+      }
+    }
+    if (!pushed) {
+      allStation.push(await setStationData(station.station_g_cd));
+    }
+  });
+};
+initAllStation();
+const allLine = [];
+const initAllLine = async () => {
+  allLine.length = 0;
+  const lineList = await prisma$2.line.findMany({
+    select: {
+      line_cd: true,
+      line_name: true
+    }
+  });
+  lineList.forEach(async (line) => {
+    const linedStationList = await prisma$2.station.findMany({
+      where: {
+        line_cd: {
+          equals: line.line_cd
+        }
+      },
+      select: {
+        station_g_cd: true
+      }
+    });
+    allLine.push({ name: line.line_name, stations: linedStationList.map((x) => {
+      return x.station_g_cd;
+    }) });
+  });
+};
+initAllLine();
+const searchRoute = defineEventHandler(async (e) => {
   try {
-    return await prisma$2.company.findMany();
+    const stations = getQuery$1(e);
+    const station = {
+      start: Number(stations.start),
+      end: Number(stations.end)
+    };
+    if (!station.start || typeof station.start !== "number") {
+      return { error: 'Query parameter "start" is required and must be a number. ' + station.start + " is " + typeof station.start };
+    }
+    if (!station.end || typeof station.end !== "number") {
+      return { error: 'Query parameter "end" is required and must be a number. ' + station.end + " is " + typeof station.end };
+    }
+    const returnRoute = await searchRoute$1(station.start, station.end);
+    return returnRoute;
   } catch (error) {
-    return { error: "Failed to feach companys" };
+    return { error: "Failed to feach route" };
   }
 });
+const searchRoute$1 = async (start, end) => {
+  try {
+    const graph = createGraphWithTransfers(allStation, allLine);
+    const result = findRouteWithAStar(graph, allStation, allLine, start, end);
+    if (!result) {
+      return { error: "No route found between the specified stations." };
+    }
+    const { route, usedLines } = result;
+    return {
+      route: route.map((g_cd, index) => {
+        const station = allStation.find((station2) => station2.g_cd === g_cd);
+        const line = usedLines[index - 1];
+        return station ? {
+          name: station.name,
+          g_cd: station.g_cd,
+          lat: station.lat,
+          lon: station.lon,
+          line: line ? line.name : null
+        } : null;
+      })
+    };
+  } catch (error) {
+    return { error };
+  }
+};
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const toRadians = (degree) => degree * (Math.PI / 180);
+  const R = 6371;
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+const findRouteWithAStar = (graph, stations, lines, start, end) => {
+  if (!graph[start] || !graph[end]) {
+    throw new Error("Start or end station not found in the graph");
+  }
+  const openSet = [
+    { station: start, path: [start], linePath: [], cost: 0 }
+  ];
+  const visited = /* @__PURE__ */ new Set();
+  while (openSet.length > 0) {
+    openSet.sort((a, b) => a.cost - b.cost);
+    const { station, path, linePath } = openSet.shift();
+    if (station === end) {
+      return {
+        route: path,
+        usedLines: linePath.map((lineCd) => lines.find((line) => line.stations.includes(lineCd)))
+      };
+    }
+    visited.add(station);
+    for (let i = 0; i < graph[station].neighbors.length; i++) {
+      const neighbor = graph[station].neighbors[i];
+      const line = graph[station].lines[i];
+      if (!visited.has(neighbor)) {
+        const neighborStation = stations.find((s) => s.g_cd === neighbor);
+        const gCost = path.length;
+        const hCost = calculateDistance(
+          neighborStation.lat,
+          neighborStation.lon,
+          stations.find((s) => s.g_cd === end).lat,
+          stations.find((s) => s.g_cd === end).lon
+        );
+        const totalCost = gCost + hCost;
+        openSet.push({
+          station: neighbor,
+          path: [...path, neighbor],
+          linePath: [...linePath, line],
+          cost: totalCost
+        });
+      }
+    }
+  }
+  return null;
+};
+const createGraphWithTransfers = (stations, lines) => {
+  const graph = {};
+  stations.forEach((station) => {
+    graph[station.g_cd] = { neighbors: [], lines: [] };
+  });
+  lines.forEach((line) => {
+    line.stations.forEach((station, index) => {
+      if (index > 0) {
+        graph[line.stations[index]].neighbors.push(line.stations[index - 1]);
+        graph[line.stations[index]].lines.push(line.stations[index]);
+      }
+      if (index < line.stations.length - 1) {
+        graph[line.stations[index]].neighbors.push(line.stations[index + 1]);
+        graph[line.stations[index]].lines.push(line.stations[index]);
+      }
+    });
+  });
+  return graph;
+};
+const setStationData = async (g_cd) => {
+  const station = await getStationByGCD(g_cd);
+  let data = {
+    name: station[0].station_name,
+    g_cd: Number(station[0].station_g_cd),
+    lon: Number(station[0].lon),
+    lat: Number(station[0].lat),
+    lines: [Number(station[0].line_cd)]
+  };
+  data.lines.length = 0;
+  station.map((x) => data.lines.push(Number(x.line_cd)));
+  return data;
+};
+const getStationByGCD = async (g_cd) => {
+  return await prisma$2.station.findMany({
+    where: {
+      station_g_cd: {
+        equals: g_cd
+      }
+    },
+    select: {
+      station_cd: true,
+      station_g_cd: true,
+      station_name: true,
+      line_cd: true,
+      lon: true,
+      lat: true
+    }
+  });
+};
 
-const company$1 = /*#__PURE__*/Object.freeze({
+const searchRoute$2 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: company
+  default: searchRoute
 });
 
 const prisma$1 = new PrismaClient();
 const searchStation = defineEventHandler(async (e) => {
   try {
-    const { text } = getQuery$1(e);
-    if (!text || typeof text !== "string") {
-      return { error: 'Query parameter "text" is required and must be a string. this is ' + typeof text };
+    const { station_g_cd } = getQuery$1(e);
+    const g_cd = Number(station_g_cd);
+    if (!g_cd || typeof g_cd !== "number") {
+      return { error: 'Query parameter "station_g_cd" is required and must be a number. ' + g_cd + " is " + typeof g_cd };
     }
-    return await searchStations(text);
+    return await prisma$1.station.findMany({
+      where: {
+        station_g_cd: {
+          equals: g_cd
+        }
+      },
+      select: {
+        station_cd: true,
+        station_g_cd: true,
+        station_name: true,
+        line_cd: true,
+        lon: true,
+        lat: true
+      }
+    });
+  } catch (error) {
+    return { error: "Failed to feach station by g_cd" };
+  }
+});
+
+const searchStation$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: searchStation
+});
+
+const prisma = new PrismaClient();
+const stationList = defineEventHandler(async (e) => {
+  try {
+    const { station_name } = getQuery$1(e);
+    if (!station_name || typeof station_name !== "string") {
+      return null;
+    }
+    return await searchStations(station_name);
   } catch (error) {
     return { error: "Failed to feach stations" };
   }
 });
-const searchStations = async (text) => {
+const searchStations = async (station_name) => {
   try {
-    let stations = await prisma$1.station.findMany({
+    let stations = await prisma.station.findMany({
       where: {
         station_name: {
-          contains: text
+          contains: station_name
         }
       },
-      distinct: ["station_name"],
+      select: {
+        station_name: true,
+        station_g_cd: true,
+        pref_cd: true
+      },
+      distinct: ["station_g_cd"],
       orderBy: { station_name: "asc" }
     });
     stations.sort((a, b) => {
-      if (a.station_name === text && b.station_name !== text) return -1;
-      if (a.station_name !== text && b.station_name === text) return 1;
+      if (a.station_name === station_name && b.station_name !== station_name) return -1;
+      if (a.station_name !== station_name && b.station_name === station_name) return 1;
       return 0;
     });
     if (stations.length > 10) {
@@ -1142,23 +1369,9 @@ const searchStations = async (text) => {
   }
 };
 
-const searchStation$1 = /*#__PURE__*/Object.freeze({
+const stationList$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: searchStation
-});
-
-const prisma = new PrismaClient();
-const station = defineEventHandler(async (e) => {
-  try {
-    return await prisma.station.findMany();
-  } catch (error) {
-    return { error: "Failed to feach companys" };
-  }
-});
-
-const station$1 = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  default: station
+  default: stationList
 });
 
 const Vue3 = version[0] === "3";
