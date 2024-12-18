@@ -4,7 +4,7 @@
         <StationList v-model="startStation"></StationList>
         <p style="text-align: center;">到着駅</p>
         <StationList v-model="endStation"></StationList>
-        <p v-if="errorMessage" style="color: red;">{{ errorMessage }}</p>
+        <p v-if="errorMessage" style="color: red; text-align: center;">{{ errorMessage }}</p>
         <div style="padding: 20px; text-align: right;">
             <btn @click="search" class="search-btn">search</btn>
         </div>
