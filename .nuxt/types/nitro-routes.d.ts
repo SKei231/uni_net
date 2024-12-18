@@ -6,9 +6,6 @@ declare module "nitropack/types" {
     '/api/searchRoute': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/searchRoute').default>>>>
     }
-    '/api/searchStation': {
-      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/searchStation').default>>>>
-    }
     '/api/stationList': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/stationList').default>>>>
     }

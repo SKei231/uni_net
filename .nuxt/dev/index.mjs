@@ -273,13 +273,11 @@ _Y2kfxSWFHv
 ];
 
 const _lazy_IENTA5 = () => Promise.resolve().then(function () { return searchRoute$2; });
-const _lazy_lsDLuv = () => Promise.resolve().then(function () { return searchStation$1; });
 const _lazy_svjjwg = () => Promise.resolve().then(function () { return stationList$1; });
 const _lazy_pAn1oq = () => Promise.resolve().then(function () { return renderer$1; });
 
 const handlers = [
   { route: '/api/searchRoute', handler: _lazy_IENTA5, lazy: true, middleware: false, method: undefined },
-  { route: '/api/searchStation', handler: _lazy_lsDLuv, lazy: true, middleware: false, method: undefined },
   { route: '/api/stationList', handler: _lazy_svjjwg, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_error', handler: _lazy_pAn1oq, lazy: true, middleware: false, method: undefined },
   { route: '/**', handler: _lazy_pAn1oq, lazy: true, middleware: false, method: undefined }
@@ -1091,11 +1089,11 @@ const errorDev = /*#__PURE__*/Object.freeze({
   template: template$1
 });
 
-const prisma$2 = new PrismaClient();
+const prisma$1 = new PrismaClient();
 const allStation = [];
 const initAllStation = async () => {
   allStation.length = 0;
-  const stationList = await prisma$2.station.findMany({
+  const stationList = await prisma$1.station.findMany({
     select: {
       station_cd: true,
       station_g_cd: true,
@@ -1121,14 +1119,14 @@ initAllStation();
 const allLine = [];
 const initAllLine = async () => {
   allLine.length = 0;
-  const lineList = await prisma$2.line.findMany({
+  const lineList = await prisma$1.line.findMany({
     select: {
       line_cd: true,
       line_name: true
     }
   });
   lineList.forEach(async (line) => {
-    const linedStationList = await prisma$2.station.findMany({
+    const linedStationList = await prisma$1.station.findMany({
       where: {
         line_cd: {
           equals: line.line_cd
@@ -1272,7 +1270,7 @@ const setStationData = async (g_cd) => {
   return data;
 };
 const getStationByGCD = async (g_cd) => {
-  return await prisma$2.station.findMany({
+  return await prisma$1.station.findMany({
     where: {
       station_g_cd: {
         equals: g_cd
@@ -1292,39 +1290,6 @@ const getStationByGCD = async (g_cd) => {
 const searchRoute$2 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: searchRoute
-});
-
-const prisma$1 = new PrismaClient();
-const searchStation = defineEventHandler(async (e) => {
-  try {
-    const { station_g_cd } = getQuery$1(e);
-    const g_cd = Number(station_g_cd);
-    if (!g_cd || typeof g_cd !== "number") {
-      return { error: 'Query parameter "station_g_cd" is required and must be a number. ' + g_cd + " is " + typeof g_cd };
-    }
-    return await prisma$1.station.findMany({
-      where: {
-        station_g_cd: {
-          equals: g_cd
-        }
-      },
-      select: {
-        station_cd: true,
-        station_g_cd: true,
-        station_name: true,
-        line_cd: true,
-        lon: true,
-        lat: true
-      }
-    });
-  } catch (error) {
-    return { error: "Failed to feach station by g_cd" };
-  }
-});
-
-const searchStation$1 = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  default: searchStation
 });
 
 const prisma = new PrismaClient();

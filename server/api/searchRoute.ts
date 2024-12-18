@@ -11,7 +11,6 @@ type StationData = {
     lat: number,
     lines: number[]
 }
-
 const allStation:StationData[] = []
 const initAllStation = async () => {
     allStation.length = 0;
